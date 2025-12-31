@@ -1,0 +1,15 @@
+streamlit
+nbformat
+nbconvert
+io
+re
+os
+pandas
+numpy
+sqlalchemy
+plotly
+matplotlib
+altair
+geopandas
+pydeck
+psycopg2-binary

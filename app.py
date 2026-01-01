@@ -686,7 +686,7 @@ else:
             
             st.markdown("<h5> 1. Growth of PhonePe's Total Transaction Volume and Value Over the Years </h5>", unsafe_allow_html = True)
 
-            st.plotly_chart(fig1, use_container_width = True)
+            st.plotly_chart(figs["fig1"], use_container_width = True)
             st.markdown("<b>Observations</b>", unsafe_allow_html = True)
             st.markdown("""
             - The percentage growth in number of transactions has decreased from 2019 to 2024 overall from 277.69% to 54.54%. 
@@ -710,7 +710,7 @@ else:
             # Problem 2 
             
             st.markdown("<h5> 2. Top 5 States with Highest Average Year on Year Transaction Growth </h5>", unsafe_allow_html = True)
-            st.plotly_chart(fig2, use_container_width = True)
+            st.plotly_chart(figs["fig2"], use_container_width = True)
 
             st.markdown("<b>Observations</b>", unsafe_allow_html = True)
             st.markdown("""
@@ -734,7 +734,7 @@ else:
             # Problem 3
             
             st.markdown("<h5> 3. Top 5 States showing the most decline in Transaction Growth from 2021-2024 </h5>", unsafe_allow_html = True)
-            st.plotly_chart(fig3, use_container_width = True)
+            st.plotly_chart(figs["fig3"], use_container_width = True)
 
             st.markdown("<b>Observations</b>", unsafe_allow_html = True)
             st.markdown("""
@@ -759,7 +759,7 @@ else:
             # Problem 4
             
             st.markdown("<h5> 4. Quarters with Highest Transaction Spikes in each Year </h5>", unsafe_allow_html = True)
-            st.plotly_chart(fig4, use_container_width = True)
+            st.plotly_chart(figs["fig4"], use_container_width = True)
 
             st.markdown("<b>What is a Transaction Spike?</b>", unsafe_allow_html = True)
             st.markdown("""
@@ -786,7 +786,7 @@ else:
             # Problem 5
             
             st.markdown("<h5> 5. Percentage Share of All Transactions By Each Payment Type </h5>", unsafe_allow_html = True)
-            st.plotly_chart(fig5, use_container_width = True)
+            st.plotly_chart(figs["fig5"], use_container_width = True)
 
             st.markdown("<b>What do each payment type mean?</b>", unsafe_allow_html = True)
             st.markdown("""
@@ -1083,5 +1083,6 @@ else:
             - These regions have higher concentration of working professionals, wealthier residents and a strong digital adoption culture fueling rapid insurance uptake through PhonePe.
             - It is also likely that PhonePe actively focused its marketing and outreach efforts in these postal codes, tapping into neighbourhoods known for early tech adoption and openness to digital financial products.
             - Postal codes such as 560103, which corresponds to the Belandur area in Bengaluru, are hubs for IT parks, tech campuses, and newly developed residential complexes, leading to a surge in new residents. As people relocate or find new jobs, insurance purchases, especially health, life or property - often spike as part of onboarding financial planning.""")    
+
 
 

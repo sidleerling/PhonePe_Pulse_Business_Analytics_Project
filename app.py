@@ -94,7 +94,7 @@ def load_business_figures():
     # ======================================================
     # QUERY 3
     # ======================================================
-    q3 = text("""
+    """q3 = text("""
         WITH s AS (
             SELECT State, Year, SUM(Transaction_count) t
             FROM agg_trans
@@ -111,7 +111,7 @@ def load_business_figures():
     """)
     df = pd.read_sql(q3, engine)
     figs["fig3"] = px.line(df, x="Year", y="growth", color="State",
-                           title="Transaction Growth Decline Trends")
+                           title="Transaction Growth Decline Trends")"""
 
     # ======================================================
     # QUERY 4
@@ -1085,6 +1085,7 @@ else:
             - These regions have higher concentration of working professionals, wealthier residents and a strong digital adoption culture fueling rapid insurance uptake through PhonePe.
             - It is also likely that PhonePe actively focused its marketing and outreach efforts in these postal codes, tapping into neighbourhoods known for early tech adoption and openness to digital financial products.
             - Postal codes such as 560103, which corresponds to the Belandur area in Bengaluru, are hubs for IT parks, tech campuses, and newly developed residential complexes, leading to a surge in new residents. As people relocate or find new jobs, insurance purchases, especially health, life or property - often spike as part of onboarding financial planning.""")    
+
 
 
 

@@ -6,13 +6,14 @@ import pandas as pd
 import plotly.express as px
 
 # Setting up the MySQL environment
-username = 'root'
-password = 'Sid%40SQL2023'
-host = 'localhost'
-port = 3306
-database = 'phonepe_db'
-connection_string = f"mysql+pymysql://{username}:{password}@{host}:{port}/{database}"
-engine = create_engine(connection_string)
+DB_USER = os.environ["DB_USER"]
+DB_PASSWORD = os.environ["DB_PASSWORD"]
+DB_HOST = os.environ["DB_HOST"]
+DB_PORT = os.environ["DB_PORT"]
+DB_NAME = os.environ["DB_NAME"]
+
+connection_string = f"mysql+pymysql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
+engine = create_engine(connection_string) 
 
 # Query 1
 
@@ -558,3 +559,4 @@ fig17 = px.bar(df_pincode_ins_trans, x = "Pincode", y = "Growth From Prev Year",
                title = "Top 5 Pincodes With Highest Growth in Insurance Transactions in 2024")
 
 fig17.update_layout(xaxis_type = "category", bargap = 0.2)
+

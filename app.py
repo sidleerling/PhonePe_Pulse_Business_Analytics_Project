@@ -105,12 +105,13 @@ elif r == 'EXPLORE DATA': # EXPLORE DATA section
     
     # Setting up the SQL environment, connecting to MySQL so that the queries can run in the background 
     
-    username = 'root'
-    password = 'Sid%40SQL2023'
-    host = 'localhost'
-    port = 3306
-    database = 'phonepe_db'
-    connection_string = f"mysql+pymysql://{username}:{password}@{host}:{port}/{database}"
+    DB_USER = "root"
+    DB_PASSWORD = "ntqTcLmxdMWjXYkZOZZutYlJeoTZnqVP"
+    DB_HOST = "trolley.proxy.rlwy.net"
+    DB_PORT = "49101"
+    DB_NAME = "railway"
+
+    connection_string = f"mysql+pymysql://{DB_USER}:{DB_PASSWORD}@{DB_HOST}:{DB_PORT}/{DB_NAME}"
     engine = create_engine(connection_string) 
 
     st.sidebar.header("Select Data") # Users can select different data categories 
@@ -743,3 +744,4 @@ else:
             - These regions have higher concentration of working professionals, wealthier residents and a strong digital adoption culture fueling rapid insurance uptake through PhonePe.
             - It is also likely that PhonePe actively focused its marketing and outreach efforts in these postal codes, tapping into neighbourhoods known for early tech adoption and openness to digital financial products.
             - Postal codes such as 560103, which corresponds to the Belandur area in Bengaluru, are hubs for IT parks, tech campuses, and newly developed residential complexes, leading to a surge in new residents. As people relocate or find new jobs, insurance purchases, especially health, life or property - often spike as part of onboarding financial planning.""")    
+

@@ -334,6 +334,7 @@ def load_business_figures(engine):
 
     return figs
 
+figs = load_business_figures(engine)
 
 # ======================================================
 # MAIN STREAMLIT APP
@@ -821,7 +822,7 @@ else:
 
             st.markdown("<h5> 1. Device Brands with the Highest and Lowest Number of PhonePe App Users </h5>", unsafe_allow_html = True)
 
-            st.plotly_chart(fig6, use_container_width = True)
+            st.plotly_chart(figs["fig6"], use_container_width = True)
             
             st.markdown("<b>Observations</b>", unsafe_allow_html = True)
             st.markdown("""
@@ -846,7 +847,7 @@ else:
             # Problem 7
 
             st.markdown("<h5> 2. Top 3 and Bottom 3 States with the Highest and Lowest App Engagement Rates </h5>", unsafe_allow_html = True)
-            st.plotly_chart(fig7, use_container_width = True)
+            st.plotly_chart(figs["fig7"], use_container_width = True)
 
             st.markdown("<b>What does App Engagement Rate mean?</b>", unsafe_allow_html = True)
             st.markdown("""
@@ -873,7 +874,7 @@ else:
             # Problem 8
 
             st.markdown("<h5> 3. Quarters with the Highest and Lowest App Engagement Rate each Year</h5>", unsafe_allow_html = True)
-            st.plotly_chart(fig8, use_container_width = True)
+            st.plotly_chart(figs["fig8"], use_container_width = True)
 
             st.markdown("<b>Observations</b>", unsafe_allow_html = True)
             st.markdown("""
@@ -902,7 +903,7 @@ else:
             # Problem 9
             
             st.markdown("<h5>1. Growth in Insurance Transactions and Value each over the years across all states</h5>", unsafe_allow_html = True)
-            st.plotly_chart(fig9, use_container_width = True)
+            st.plotly_chart(figs["fig9"], use_container_width = True)
             
             st.markdown("<b>Observations</b>", unsafe_allow_html = True)
             st.markdown("""
@@ -926,7 +927,7 @@ else:
             # Problem 10
             
             st.markdown("<h5>2. Top 5 States with Highest Insurance Transaction Value over the past years</h5>", unsafe_allow_html = True)
-            st.plotly_chart(fig10, use_container_width = True)
+            st.plotly_chart(figs["fig10"], use_container_width = True)
 
             st.markdown("<b>Observations</b>", unsafe_allow_html = True)
             st.markdown("""
@@ -945,7 +946,7 @@ else:
             
             # Problem 11 
             st.markdown("<h5>3. Identifying Untapped States (High Total Transaction Values but Relatively Low Insurance Penetration)</h5>", unsafe_allow_html = True)
-            st.plotly_chart(fig11, use_container_width = True)
+            st.plotly_chart(figs["fig11"], use_container_width = True)
 
             st.markdown("<b>What is meant by Untapped States?</b>", unsafe_allow_html = True)
             st.markdown("""
@@ -978,7 +979,7 @@ else:
             # Problem 12
 
             st.markdown("<h5>1. States showing consistent growth in both user registration and repeat transaction</h5>", unsafe_allow_html = True)
-            st.plotly_chart(fig12, use_container_width = True)
+            st.plotly_chart(figs["fig12"], use_container_width = True)
 
             st.markdown("<b>Observations</b>", unsafe_allow_html = True)
             st.markdown("""
@@ -1001,8 +1002,8 @@ else:
             # Problem 13
             
             st.markdown("<h5>2. Percentage Distribution Of App Opens Across Districts Within Top 3 States</h5>", unsafe_allow_html = True)
-            for state, fig13 in state_pie_charts.items():
-                st.plotly_chart(fig13, use_container_width = True)
+            for state, figs["fig13"] in state_pie_charts.items():
+                st.plotly_chart(figs["fig13"], use_container_width = True)
 
             st.markdown("<b>Observations</b>", unsafe_allow_html = True)
             st.markdown("""
@@ -1083,6 +1084,7 @@ else:
             - These regions have higher concentration of working professionals, wealthier residents and a strong digital adoption culture fueling rapid insurance uptake through PhonePe.
             - It is also likely that PhonePe actively focused its marketing and outreach efforts in these postal codes, tapping into neighbourhoods known for early tech adoption and openness to digital financial products.
             - Postal codes such as 560103, which corresponds to the Belandur area in Bengaluru, are hubs for IT parks, tech campuses, and newly developed residential complexes, leading to a surge in new residents. As people relocate or find new jobs, insurance purchases, especially health, life or property - often spike as part of onboarding financial planning.""")    
+
 
 
 

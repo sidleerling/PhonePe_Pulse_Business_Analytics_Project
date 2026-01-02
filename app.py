@@ -69,24 +69,13 @@ def load_business_figures():
     # QUERY 2
     # ======================================================
     q2 = text("""
-        WITH y AS (
-            SELECT State, Year,
-            ROUND(
-                (SUM(Transaction_count) -
-                 LAG(SUM(Transaction_count)) OVER (PARTITION BY State ORDER BY Year))
-                 * 100 /
-                NULLIF(LAG(SUM(Transaction_count)) OVER (PARTITION BY State ORDER BY Year),0),
-            2) AS yoy
-            FROM agg_trans
-            GROUP BY State, Year
-        )
-        SELECT State, AVG(yoy) AS avg_growth
-        FROM y
-        WHERE Year >= 2019
-        GROUP BY State
-        ORDER BY avg_growth DESC
-        LIMIT 5;
-    """)
+        WITH y AS (SELECT State, Year, ROUND((SUM(Transaction_count) -
+        LAG(SUM(Transaction_count)) OVER (PARTITION BY State ORDER BY Year)) * 100 /
+        NULLIF(LAG(SUM(Transaction_count)) OVER (PARTITION BY State ORDER BY Year),0),2) AS yoy
+        FROM agg_trans GROUP BY State, Year)
+        SELECT State, AVG(yoy) AS avg_growth FROM y WHERE Year >= 2019
+        GROUP BY State ORDER BY avg_growth DESC LIMIT 5;""")
+    
     df = pd.read_sql(q2, engine)
     figs["fig2"] = px.bar(df, x="State", y="avg_growth",
                           title="Top States by Average YoY Transaction Growth")
@@ -95,11 +84,11 @@ def load_business_figures():
     # QUERY 3
     # ======================================================
     q3 = text("""
-                WITH s AS (SELECT State, Year, SUM(Transaction_count) AS t FROM agg_trans
-                WHERE Year BETWEEN 2020 AND 2024 GROUP BY State, Year),
-                g AS (SELECT State, Year, t, LAG(t) OVER (PARTITION BY State ORDER BY Year) AS prev_t FROM s)
-                SELECT State, Year, ROUND((t - prev_t) * 100.0 / prev_t, 2) AS growth
-                FROM g WHERE prev_t IS NOT NULL ORDER BY State, Year;""")
+        WITH s AS (SELECT State, Year, SUM(Transaction_count) AS t FROM agg_trans
+        WHERE Year BETWEEN 2020 AND 2024 GROUP BY State, Year), 
+        g AS (SELECT State, Year, t, LAG(t) OVER (PARTITION BY State ORDER BY Year) AS prev_t FROM s)
+        SELECT State, Year, ROUND((t - prev_t) * 100.0 / prev_t, 2) AS growth
+        FROM g WHERE prev_t IS NOT NULL ORDER BY State, Year;""")
                 
     df = pd.read_sql(q3, engine)
     figs["fig3"] = px.line(df, x="Year", y="growth", color="State",
@@ -109,17 +98,11 @@ def load_business_figures():
     # QUERY 4
     # ======================================================
     q4 = text("""
-        WITH q AS (
-            SELECT Year, Quarter, SUM(Transaction_count) t
-            FROM agg_trans
-            GROUP BY Year, Quarter
-        )
-        SELECT Year, Quarter,
-        ROUND((t - LAG(t) OVER (ORDER BY Year, Quarter)) * 100 /
-              LAG(t) OVER (ORDER BY Year, Quarter),2) AS spike
-        FROM q
-        WHERE LAG(t) OVER (ORDER BY Year, Quarter) IS NOT NULL;
-    """)
+        WITH q AS (SELECT Year, Quarter, SUM(Transaction_count) AS t FROM agg_trans
+        GROUP BY Year, Quarter)
+        SELECT Year, Quarter, ROUND((t - LAG(t) OVER (ORDER BY Year, Quarter)) * 100 /LAG(t) OVER (ORDER BY Year, Quarter),2) AS spike
+        FROM q WHERE LAG(t) OVER (ORDER BY Year, Quarter) IS NOT NULL;""")
+    
     df = pd.read_sql(q4, engine)
     figs["fig4"] = px.bar(df, x="Year", y="spike", color="Quarter",
                           title="Quarterly Transaction Spike")
@@ -128,16 +111,10 @@ def load_business_figures():
     # QUERY 5
     # ======================================================
     q5 = text("""
-        WITH y AS (
-            SELECT Year, SUM(Transaction_amount) total
-            FROM agg_trans
-            GROUP BY Year
-        )
+        WITH y AS (SELECT Year, SUM(Transaction_amount) AS total FROM agg_trans GROUP BY Year)
         SELECT a.Transaction_type, ROUND(AVG(a.Transaction_amount * 100 / y.total),2) share
-        FROM agg_trans a
-        JOIN y ON a.Year = y.Year
-        GROUP BY a.Transaction_type;
-    """)
+        FROM agg_trans a JOIN y ON a.Year = y.Year GROUP BY a.Transaction_type;""")
+    
     df = pd.read_sql(q5, engine)
     figs["fig5"] = px.pie(df, names="Transaction_type", values="share",
                           title="Transaction Type Share")
@@ -146,12 +123,9 @@ def load_business_figures():
     # QUERY 6
     # ======================================================
     q6 = text("""
-        SELECT Brand_name, SUM(User_count) users
-        FROM agg_user
-        GROUP BY Brand_name
-        ORDER BY users DESC
-        LIMIT 6;
-    """)
+        SELECT Brand_name, SUM(User_count) users FROM agg_user GROUP BY Brand_name
+        ORDER BY users DESC LIMIT 6;""")
+    
     df = pd.read_sql(q6, engine)
     fig6 = make_subplots(rows=1, cols=2, subplot_titles=("Top 3 Brands", "Bottom 3 Brands"))
     fig6.add_bar(x=df.head(3)["Brand_name"], y=df.head(3)["users"], row=1, col=1)
@@ -162,13 +136,9 @@ def load_business_figures():
     # QUERY 7
     # ======================================================
     q7 = text("""
-        SELECT State,
-        ROUND(AVG(Number_of_app_opens) / AVG(Registered_users),2) engagement
-        FROM map_user
-        GROUP BY State
-        ORDER BY engagement DESC
-        LIMIT 6;
-    """)
+        SELECT State, ROUND(AVG(Number_of_app_opens) / AVG(Registered_users),2) AS engagement
+        FROM map_user GROUP BY State ORDER BY engagement DESC LIMIT 6;""")
+    
     df = pd.read_sql(q7, engine)
     fig7 = make_subplots(rows=1, cols=2, subplot_titles=("Top 3", "Bottom 3"))
     fig7.add_bar(x=df.head(3)["State"], y=df.head(3)["engagement"], row=1, col=1)
@@ -179,11 +149,9 @@ def load_business_figures():
     # QUERY 8
     # ======================================================
     q8 = text("""
-        SELECT Year, Quarter,
-        ROUND(SUM(Number_of_app_opens)/SUM(Registered_users),4) engagement
-        FROM map_user
-        GROUP BY Year, Quarter;
-    """)
+        SELECT Year, Quarter, ROUND(SUM(Number_of_app_opens)/SUM(Registered_users),4) AS engagement
+        FROM map_user GROUP BY Year, Quarter;""")
+    
     df = pd.read_sql(q8, engine)
     figs["fig8"] = px.bar(df, x="Year", y="engagement", color="Quarter",
                           title="Quarterly User Engagement")
@@ -192,12 +160,9 @@ def load_business_figures():
     # QUERY 9
     # ======================================================
     q9 = text("""
-        SELECT Year,
-        SUM(Insurance_count) ins_txn,
-        SUM(Insurance_amount) ins_amt
-        FROM agg_ins
-        GROUP BY Year;
-    """)
+        SELECT Year, SUM(Insurance_count) AS ins_txn, SUM(Insurance_amount) AS ins_amt
+        FROM agg_ins GROUP BY Year;""")
+    
     df = pd.read_sql(q9, engine)
     figs["fig9"] = px.bar(df, x="Year",
                           y=["ins_txn", "ins_amt"],
@@ -208,13 +173,9 @@ def load_business_figures():
     # QUERY 10
     # ======================================================
     q10 = text("""
-        SELECT State,
-        MAX(Insurance_amount) - MIN(Insurance_amount) value
-        FROM agg_ins
-        GROUP BY State
-        ORDER BY value DESC
-        LIMIT 5;
-    """)
+        SELECT State, MAX(Insurance_amount) - MIN(Insurance_amount) AS value
+        FROM agg_ins GROUP BY State ORDER BY value DESC LIMIT 5;""")
+    
     df = pd.read_sql(q10, engine)
     figs["fig10"] = px.bar(df, x="State", y="value",
                            title="Top Insurance Value States")
@@ -224,13 +185,9 @@ def load_business_figures():
     # ======================================================
     q11 = text("""
         SELECT t.State,
-        ROUND(SUM(i.Insurance_count) * 100 / SUM(t.Transaction_count),4) penetration
-        FROM agg_trans t
-        JOIN agg_ins i ON t.State = i.State
-        GROUP BY t.State
-        ORDER BY penetration ASC
-        LIMIT 5;
-    """)
+        ROUND(SUM(i.Insurance_count) * 100 / SUM(t.Transaction_count),4) AS penetration
+        FROM agg_trans t JOIN agg_ins i ON t.State = i.State GROUP BY t.State ORDER BY penetration ASC LIMIT 5;""")
+    
     df = pd.read_sql(q11, engine)
     figs["fig11"] = px.bar(df, x="State", y="penetration",
                            title="Untapped Insurance States")
@@ -239,13 +196,9 @@ def load_business_figures():
     # QUERY 12
     # ======================================================
     q12 = text("""
-        SELECT State,
-        ROUND(AVG(Transaction_count),2) avg_txn
-        FROM agg_trans
-        GROUP BY State
-        ORDER BY avg_txn DESC
-        LIMIT 10;
-    """)
+        SELECT State, ROUND(AVG(Transaction_count),2) AS avg_txn FROM agg_trans
+        GROUP BY State ORDER BY avg_txn DESC LIMIT 10;""")
+    
     df = pd.read_sql(q12, engine)
     figs["fig12"] = px.bar(df, x="State", y="avg_txn",
                            title="Consistent Transaction Growth States")
@@ -254,10 +207,8 @@ def load_business_figures():
     # QUERY 13 (STATE PIE CHARTS)
     # ======================================================
     q13 = text("""
-        SELECT State, District_name, SUM(Number_of_app_opens) opens
-        FROM map_user
-        GROUP BY State, District_name;
-    """)
+        SELECT State, District_name, SUM(Number_of_app_opens) AS opens FROM map_user GROUP BY State, District_name;""")
+    
     df = pd.read_sql(q13, engine)
     state_pies = {}
     for state in df["State"].unique():
@@ -1077,6 +1028,7 @@ else:
             - These regions have higher concentration of working professionals, wealthier residents and a strong digital adoption culture fueling rapid insurance uptake through PhonePe.
             - It is also likely that PhonePe actively focused its marketing and outreach efforts in these postal codes, tapping into neighbourhoods known for early tech adoption and openness to digital financial products.
             - Postal codes such as 560103, which corresponds to the Belandur area in Bengaluru, are hubs for IT parks, tech campuses, and newly developed residential complexes, leading to a surge in new residents. As people relocate or find new jobs, insurance purchases, especially health, life or property - often spike as part of onboarding financial planning.""")    
+
 
 
 

@@ -431,91 +431,158 @@ def load_business_figures():
     # QUERY 13 (STATE PIE CHARTS)
     # ======================================================
     q13 = text("""
-        SELECT
-    State,
-    District_name,
-    SUM(Number_of_app_opens) AS app_opens
-FROM map_user
-GROUP BY State, District_name;
-""")
+        WITH district_metrics AS (
+                  SELECT State, District_name, SUM(Registered_users) AS total_registered_users,
+                  SUM(Number_of_app_opens) AS total_app_opens
+                  FROM map_user
+                  GROUP BY State, District_name),
+                  state_totals AS (
+                  SELECT State, SUM(total_registered_users) AS state_total_registered,
+                  SUM(total_app_opens) AS state_total_app_opens
+                  FROM district_metrics
+                  GROUP BY State),
+                  joined_data AS (
+                  SELECT dm.State, dm.District_name, dm.total_registered_users, dm.total_app_opens,
+                  ROUND((dm.total_app_opens / st.state_total_app_opens) * 100, 2) AS app_open_share_percent
+                  FROM district_metrics dm 
+                  JOIN state_totals st ON dm.State = st.State),
+                  state_ranking AS (
+                  SELECT State, SUM(total_registered_users) AS state_registered_users
+                  FROM district_metrics
+                  GROUP BY State),
+                  top3_states AS (
+                  SELECT State FROM state_ranking ORDER BY state_registered_users DESC LIMIT 3),
+                  ranked_districts AS (
+                  SELECT jd.*, ROW_NUMBER() OVER (PARTITION BY State ORDER BY total_registered_users DESC) AS district_rank
+                  FROM joined_data jd
+                  WHERE jd.State IN (SELECT State FROM top3_states))
+                  SELECT State, District_name AS 'District Name', total_app_opens AS 'Total App Opens',
+                  app_open_share_percent AS 'App Open Share'
+                  FROM ranked_districts
+                  WHERE district_rank <= 5
+                  ORDER BY State, district_rank;""")
     
-    df = pd.read_sql(q13, engine)
-    state_pies = {}
-    for state in df["State"].unique():
-        sdf = df[df["State"] == state]
-        state_pies[state] = px.pie(
-            sdf, names="District_name", values="app_opens",
-            title=f"{state} App Open Share"
+    df_district_metrics = pd.read_sql(q13, engine)
+    import plotly.express as px
+
+    state_pie_charts = {}
+    states = df_district_metrics['State'].unique()
+    
+    for state in states:
+        df_state = df_district_metrics[df_district_metrics['State'] == state]
+        
+        figs["fig13"] = px.pie(
+            df_state,
+            values = 'App Open Share',
+            names = 'District Name',
+            title = f'App Open Share Percent for {state}',
+            hole = 0.3 
         )
-    figs["state_pie_charts"] = state_pies
+        figs["fig13"].update_traces(textposition ='inside', textinfo='percent+label')
+        state_pie_charts[state] = figs["fig13"]
 
     # ======================================================
     # QUERY 14
     # ======================================================
     q14 = text("""
-        SELECT
-    State,
-    SUM(Insurance_amount) AS total_insurance
-FROM top_ins
-WHERE Year = 2024
-GROUP BY State
-ORDER BY total_insurance DESC
-LIMIT 3;""")
+        WITH state_insurance AS (
+                  SELECT state, SUM(insurance_amount) AS total_insurance_amount FROM top_ins 
+                  WHERE year = 2024
+                  GROUP BY state)
+                  SELECT state, ROUND(total_insurance_amount, 2) AS total_insurance_amount
+                  FROM state_insurance 
+                  ORDER BY total_insurance_amount DESC 
+                  LIMIT 3;""")
     
-    df = pd.read_sql(q14, engine)
-    figs["fig14"] = px.bar(df, x="State", y="total_insurance",
-                           title="Top Insurance States 2024")
+    df_high_total_trans_region = pd.read_sql(q14, engine)
+    df_high_total_trans_region = df_high_total_trans_region.rename(columns = {"state":"State",
+                                                                        "total_insurance_amount":"Total Insurance Amount"})
+
+    df_high_total_trans_region = df_high_total_trans_region.sample(frac = 1).reset_index(drop = True)
+    figs["fig14"] = px.bar(df_high_total_trans_region, x = "State", y = "Total Insurance Amount", 
+                   color = "State",
+                   color_discrete_sequence = px.colors.qualitative.Plotly, 
+                   labels = {"State": "Regions","Total Insurance Amount":"Total Insurance Amount"},
+                   title = "Top 3 Regions Recording the Highest Total Insurance Transaction Amount in 2024")
+
 
     # ======================================================
     # QUERY 15
     # ======================================================
     q15 = text("""
-        SELECT
-    Year,
-    Quarter,
-    SUM(Insurance_amount) AS total_volume
-FROM top_ins
-GROUP BY Year, Quarter;""")
+        SELECT year, quarter, total_insurance_trans_volume FROM (
+                  SELECT year, quarter, SUM(insurance_amount) AS total_insurance_trans_volume,
+                  RANK() OVER (PARTITION BY year ORDER BY SUM(insurance_amount) DESC) AS rnk
+                  FROM top_ins GROUP BY year, quarter) ranked
+                  WHERE rnk = 1;""")
     
-    df = pd.read_sql(q15, engine)
-    figs["fig15"] = px.bar(df, x="Year", y="total_volume", color="Quarter",
-                           title="Highest Insurance Volume Quarters")
+    df_y_q_trans = pd.read_sql(q15, engine)
+    df_y_q_high_trans = df_y_q_high_trans.rename(columns = {"year":"Year","quarter":"Quarter",
+                                                        "total_insurance_trans_volume":"Total Insurance Trans Volume"})
+
+    df_y_q_high_trans["Quarter"] = df_y_q_high_trans["Quarter"].astype(str)
+    figs["fig15"] = px.bar(df_y_q_high_trans, x = "Year", y = "Total Insurance Trans Volume",
+                   color = "Quarter", 
+                   color_discrete_sequence = px.colors.qualitative.Plotly,
+                   labels = {"State": "State","Total Insurance Trans Volume":"Total Insurance Trans Volume","Quarter":"Quarter"},
+                   title = "Year and Quarter Combinations With Highest Total Insurance Transaction Volume")
 
     # ======================================================
     # QUERY 16
     # ======================================================
     q16 = text("""
-        SELECT
-    District_name,
-    SUM(Insurance_amount) AS total_insurance
-FROM map_ins
-WHERE Year = 2024
-GROUP BY District_name
-ORDER BY total_insurance DESC
-LIMIT 5;""")
+        SELECT district_name, SUM(insurance_amount) AS total_insurance_value
+                  FROM map_ins WHERE year = 2024
+                  GROUP BY district_name
+                  ORDER BY total_insurance_value DESC
+                  LIMIT 5;""")
     
-    df = pd.read_sql(q16, engine)
-    figs["fig16"] = px.bar(df, x="District_name", y="total_insurance",
-                           title="Top Districts by Insurance Volume")
+    df_top5_districts_ins = pd.read_sql(q16, engine)
+    df_top5_districts_ins = df_top5_districts_ins.rename(columns = {"district_name":"District Name", 
+                                                                  "total_insurance_value":"Total Insurance Volume"})
+
+    figs["fig16"] = px.bar(df_top5_districts_ins, x = "District Name", y = "Total Insurance Volume",
+               color = "District Name",
+               color_discrete_sequence = px.colors.qualitative.Plotly,
+               labels = {"District Name":"District Name","Total Insurance Volume":"Total Insurance Volume"},
+               title = "Top 5 Districts With Highest Total Insurance Transaction Volume In 2024")
 
     # ======================================================
     # QUERY 17
     # ======================================================
     q17 = text("""
-        SELECT
-    Pincode,
-    SUM(Insurance_count) AS growth
-FROM top_ins
-WHERE Year = 2024
-GROUP BY Pincode
-ORDER BY growth DESC
-LIMIT 5;
-    """)
+        WITH yearly_pin_data AS (
+                  SELECT pincode, year, SUM(insurance_count) AS yearly_transaction_count
+                  FROM top_ins GROUP BY pincode, year),
+                  growth_calc AS (
+                  SELECT p1.pincode, (p2.yearly_transaction_count - p1.yearly_transaction_count) AS growth_in_count,
+                  p2.year
+                  FROM yearly_pin_data p1
+                  JOIN yearly_pin_data p2
+                  ON p1.pincode = p2.pincode
+                  AND p2.year = p1.year + 1)
+                  SELECT pincode, growth_in_count AS growth_from_prev_year
+                  FROM growth_calc
+                  WHERE year = 2024
+                  ORDER BY growth_from_prev_year DESC
+                  LIMIT 5;""")
     
-    df = pd.read_sql(q17, engine)
-    figs["fig17"] = px.bar(df, x="Pincode", y="growth",
-                           title="Top Pincodes Insurance Growth")
+    df_pincode_ins_trans = pd.read_sql(q17, engine)
+    df_pincode_ins_trans = df_pincode_ins_trans.rename(columns = {"pincode":"Pincode",
+                                                              "growth_from_prev_year":"Growth From Prev Year"})
 
+    df_pincode_ins_trans["Pincode"] = df_pincode_ins_trans["Pincode"].astype(int)
+    df_pincode_ins_trans["Growth From Prev Year"] = df_pincode_ins_trans["Growth From Prev Year"].astype(int)
+    
+    df_pincode_ins_trans["Pincode"] = df_pincode_ins_trans["Pincode"].astype(str) 
+    figs["fig17"] = px.bar(df_pincode_ins_trans, x = "Pincode", y = "Growth From Prev Year", 
+                    color = "Pincode",
+                    color_discrete_sequence = px.colors.qualitative.Plotly,
+                    labels = {"Pincode":"Pincode","Growth From Prev Year":"Growth From Previous Year"},
+                    title = "Top 5 Pincodes With Highest Growth in Insurance Transactions in 2024")
+    
+    figs["fig17"].update_layout(xaxis_type = "category", bargap = 0.2)
+    
     return figs
 
 figs = load_business_figures()
@@ -1268,6 +1335,7 @@ else:
             - These regions have higher concentration of working professionals, wealthier residents and a strong digital adoption culture fueling rapid insurance uptake through PhonePe.
             - It is also likely that PhonePe actively focused its marketing and outreach efforts in these postal codes, tapping into neighbourhoods known for early tech adoption and openness to digital financial products.
             - Postal codes such as 560103, which corresponds to the Belandur area in Bengaluru, are hubs for IT parks, tech campuses, and newly developed residential complexes, leading to a surge in new residents. As people relocate or find new jobs, insurance purchases, especially health, life or property - often spike as part of onboarding financial planning.""")    
+
 
 
 

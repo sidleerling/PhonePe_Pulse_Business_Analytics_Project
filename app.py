@@ -45,13 +45,14 @@ def load_business_figures():
     # QUERY 1
     # ======================================================
     q1 = text("""
-        SELECT Year,
-               SUM(Transaction_count) AS total_txn,
-               SUM(Transaction_amount) AS total_amt
-        FROM agg_trans
-        GROUP BY Year
-        ORDER BY Year;
-    """)
+        SELECT
+    Year,
+    SUM(Transaction_count) AS total_transactions,
+    SUM(Transaction_amount) AS total_amount
+FROM agg_trans
+GROUP BY Year
+ORDER BY Year;""")
+    
     df = pd.read_sql(q1, engine)
     df["txn_growth"] = df["total_txn"].pct_change() * 100
     df["amt_growth"] = df["total_amt"].pct_change() * 100
@@ -69,12 +70,24 @@ def load_business_figures():
     # QUERY 2
     # ======================================================
     q2 = text("""
-        WITH y AS (SELECT State, Year, ROUND((SUM(Transaction_count) -
-        LAG(SUM(Transaction_count)) OVER (PARTITION BY State ORDER BY Year)) * 100 /
-        NULLIF(LAG(SUM(Transaction_count)) OVER (PARTITION BY State ORDER BY Year),0),2) AS yoy
-        FROM agg_trans GROUP BY State, Year)
-        SELECT State, AVG(yoy) AS avg_growth FROM y WHERE Year >= 2019
-        GROUP BY State ORDER BY avg_growth DESC LIMIT 5;""")
+        SELECT
+    t1.State,
+    AVG(
+        (t1.total_txn - t2.total_txn) * 100.0 / NULLIF(t2.total_txn, 0)
+    ) AS avg_yoy_growth
+FROM
+    (SELECT State, Year, SUM(Transaction_count) AS total_txn
+     FROM agg_trans
+     GROUP BY State, Year) t1
+JOIN
+    (SELECT State, Year + 1 AS Year, SUM(Transaction_count) AS total_txn
+     FROM agg_trans
+     GROUP BY State, Year) t2
+ON t1.State = t2.State AND t1.Year = t2.Year
+WHERE t1.Year >= 2019
+GROUP BY t1.State
+ORDER BY avg_yoy_growth DESC
+LIMIT 5;""")
     
     df = pd.read_sql(q2, engine)
     figs["fig2"] = px.bar(df, x="State", y="avg_growth",
@@ -84,11 +97,21 @@ def load_business_figures():
     # QUERY 3
     # ======================================================
     q3 = text("""
-        WITH s AS (SELECT State, Year, SUM(Transaction_count) AS t FROM agg_trans
-        WHERE Year BETWEEN 2020 AND 2024 GROUP BY State, Year), 
-        g AS (SELECT State, Year, t, LAG(t) OVER (PARTITION BY State ORDER BY Year) AS prev_t FROM s)
-        SELECT State, Year, ROUND((t - prev_t) * 100.0 / prev_t, 2) AS growth
-        FROM g WHERE prev_t IS NOT NULL ORDER BY State, Year;""")
+        SELECT
+    a.State,
+    a.Year,
+    ROUND((a.total_txn - b.total_txn) * 100.0 / NULLIF(b.total_txn, 0), 2) AS yoy_growth
+FROM
+    (SELECT State, Year, SUM(Transaction_count) AS total_txn
+     FROM agg_trans
+     WHERE Year BETWEEN 2020 AND 2024
+     GROUP BY State, Year) a
+JOIN
+    (SELECT State, Year + 1 AS Year, SUM(Transaction_count) AS total_txn
+     FROM agg_trans
+     GROUP BY State, Year) b
+ON a.State = b.State AND a.Year = b.Year
+ORDER BY a.State, a.Year;""")
                 
     df = pd.read_sql(q3, engine)
     figs["fig3"] = px.line(df, x="Year", y="growth", color="State",
@@ -101,25 +124,17 @@ def load_business_figures():
        SELECT
     a.Year,
     a.Quarter,
-    ROUND(
-        (a.total_txn - b.total_txn) * 100.0 / NULLIF(b.total_txn, 0),
-        2
-    ) AS spike
+    ROUND((a.total_txn - b.total_txn) * 100.0 / NULLIF(b.total_txn, 0), 2) AS spike_pct
 FROM
-    (
-        SELECT Year, Quarter, SUM(Transaction_count) AS total_txn
-        FROM agg_trans
-        GROUP BY Year, Quarter
-    ) a
-LEFT JOIN
-    (
-        SELECT Year, Quarter + 1 AS Quarter, SUM(Transaction_count) AS total_txn
-        FROM agg_trans
-        GROUP BY Year, Quarter
-    ) b
+    (SELECT Year, Quarter, SUM(Transaction_count) AS total_txn
+     FROM agg_trans
+     GROUP BY Year, Quarter) a
+JOIN
+    (SELECT Year, Quarter + 1 AS Quarter, SUM(Transaction_count) AS total_txn
+     FROM agg_trans
+     GROUP BY Year, Quarter) b
 ON a.Year = b.Year AND a.Quarter = b.Quarter
-WHERE b.total_txn IS NOT NULL;
-
+WHERE b.total_txn IS NOT NULL;""")
 
     
     df = pd.read_sql(q4, engine)
@@ -130,9 +145,12 @@ WHERE b.total_txn IS NOT NULL;
     # QUERY 5
     # ======================================================
     q5 = text("""
-        WITH y AS (SELECT Year, SUM(Transaction_amount) AS total FROM agg_trans GROUP BY Year)
-        SELECT a.Transaction_type, ROUND(AVG(a.Transaction_amount * 100 / y.total),2) share
-        FROM agg_trans a JOIN y ON a.Year = y.Year GROUP BY a.Transaction_type;""")
+        SELECT
+    Transaction_type,
+    ROUND(SUM(Transaction_amount) * 100.0 /
+          (SELECT SUM(Transaction_amount) FROM agg_trans), 2) AS share_pct
+FROM agg_trans
+GROUP BY Transaction_type;""")
     
     df = pd.read_sql(q5, engine)
     figs["fig5"] = px.pie(df, names="Transaction_type", values="share",
@@ -1047,6 +1065,7 @@ else:
             - These regions have higher concentration of working professionals, wealthier residents and a strong digital adoption culture fueling rapid insurance uptake through PhonePe.
             - It is also likely that PhonePe actively focused its marketing and outreach efforts in these postal codes, tapping into neighbourhoods known for early tech adoption and openness to digital financial products.
             - Postal codes such as 560103, which corresponds to the Belandur area in Bengaluru, are hubs for IT parks, tech campuses, and newly developed residential complexes, leading to a surge in new residents. As people relocate or find new jobs, insurance purchases, especially health, life or property - often spike as part of onboarding financial planning.""")    
+
 
 
 

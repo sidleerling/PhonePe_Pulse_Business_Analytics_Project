@@ -333,53 +333,99 @@ def load_business_figures():
     # QUERY 10
     # ======================================================
     q10 = text("""
-        SELECT
-    State,
-    MAX(Insurance_amount) - MIN(Insurance_amount) AS insurance_spread
-FROM agg_ins
-GROUP BY State
-ORDER BY insurance_spread DESC
-LIMIT 5;
-""")
+        WITH yearly_totals AS (
+                  SELECT State, Year, SUM(Insurance_amount) AS total_value FROM agg_ins
+                  GROUP BY state, year)
+                  SELECT State, (MAX(total_value) - MIN(total_value)) AS InsuranceTransactionValue
+                  FROM yearly_totals
+                  GROUP BY state
+                  ORDER BY InsuranceTransactionValue DESC
+                  LIMIT 5;""")
     
-    df = pd.read_sql(q10, engine)
-    figs["fig10"] = px.bar(df, x="State", y="insurance_spread",
-                           title="Top Insurance Value States")
+    df_high_insurance_trans = pd.read_sql(q10, engine)
+    df_high_insurance_trans["InsuranceTransactionValue"] = df_high_insurance_trans["InsuranceTransactionValue"]/1e7
+
+    df_high_insurance_trans = df_high_insurance_trans.rename(columns = 
+                                                             {"InsuranceTransactionValue":"Insurance Transaction Value (in Cr)"})
+    
+    figs["fig10"] = px.bar(df_high_insurance_trans, x = "State", y = "Insurance Transaction Value (in Cr)",
+                   color = "State",
+                   color_discrete_sequence = px.colors.qualitative.Plotly,
+                   labels = {"State":"State","Insurance Transaction Value (in Cr)":"Insurance Transaction Value (in Cr)"},
+                   title = "Top 5 States with Highest Insurance Transaction Value Over The Years")
 
     # ======================================================
     # QUERY 11
     # ======================================================
     q11 = text("""
-        SELECT
-    t.State,
-    ROUND(SUM(i.Insurance_count) * 100.0 / NULLIF(SUM(t.Transaction_count), 0), 2) AS penetration
-FROM agg_trans t
-JOIN agg_ins i ON t.State = i.State
-GROUP BY t.State
-ORDER BY penetration ASC
-LIMIT 5;
-""")
+        WITH total_activity AS (
+                  SELECT state, SUM(Transaction_count) AS total_txn_count, SUM(Transaction_amount) AS total_txn_value
+                  FROM agg_trans
+                  GROUP BY state),
+                  insurance_activity AS (
+                  SELECT State, SUM(Insurance_count) AS total_insurance_count, SUM(Insurance_amount) AS total_insurance_value
+                  FROM agg_ins
+                  GROUP BY State),
+                  combined AS (
+                  SELECT t.State, t.total_txn_count, t.total_txn_value, i.total_insurance_count, i.total_insurance_value,
+                  ROUND((i.total_insurance_count * 100.0 / NULLIF(t.total_txn_count, 0)), 5) AS insurance_penetration_rate,
+                  ROUND((i.total_insurance_value * 100.0 / NULLIF(t.total_txn_value, 0)), 5) AS insurance_value_share
+                  FROM total_activity t
+                  LEFT JOIN insurance_activity i ON t.state = i.state)
+                  SELECT State, total_txn_count as 'Total Transactions', total_txn_value as 'Total Transaction Amount', 
+                  total_insurance_count as 'Total Insurances', total_insurance_value as 'Total Insurance Amount', 
+                  insurance_penetration_rate as "Insurance Penetration Rate", 
+                  insurance_value_share as "Insurance Value Share"
+                  FROM combined
+                  WHERE insurance_penetration_rate IS NOT NULL
+                  ORDER BY insurance_penetration_rate ASC
+                  limit 5;""")
     
-    df = pd.read_sql(q11, engine)
-    figs["fig11"] = px.bar(df, x="State", y="penetration",
-                           title="Untapped Insurance States")
+    df_untapped_region = pd.read_sql(q11, engine)
+    figs["fig11"] = px.bar(df_untapped_region, x = "State", y = ["Insurance Penetration Rate"], 
+                           color = 'State',
+                           color_discrete_sequence = px.colors.qualitative.Plotly, 
+                           labels = {"State": "State","variable": "Metric","value": "Insurance Penetration Rate"},
+                           title = "Untapped States - High Total Transaction Values But Relatively Low Insurance Penetration")
 
     # ======================================================
     # QUERY 12
     # ======================================================
     q12 = text("""
-        SELECT
-    State,
-    AVG(Transaction_count) AS avg_txn
-FROM agg_trans
-GROUP BY State
-ORDER BY avg_txn DESC
-LIMIT 10;
-""")
+        WITH yearly_user_growth AS (
+                  SELECT state, year, SUM(Registered_users) AS yearly_registered
+                  FROM map_user
+                  GROUP BY state, year),
+                  user_growth_rate AS (
+                  SELECT state, year, yearly_registered, LAG(yearly_registered) OVER (PARTITION BY state ORDER BY year) AS prev_registered,
+                  ROUND((yearly_registered - LAG(yearly_registered) OVER (PARTITION BY state ORDER BY year)) * 100.0 / LAG(yearly_registered) OVER (PARTITION BY state ORDER BY year), 2) AS reg_growth_pct
+                  FROM yearly_user_growth),
+                  yearly_txn_growth AS (
+                  SELECT state, year, SUM(transaction_count) AS yearly_txns
+                  FROM agg_trans GROUP BY state, year),
+                  txn_growth_rate AS (
+                  SELECT state, year, yearly_txns, LAG(yearly_txns) OVER (PARTITION BY state ORDER BY year) AS prev_txns,
+                  ROUND((yearly_txns - LAG(yearly_txns) OVER (PARTITION BY state ORDER BY year)) * 100.0 / LAG(yearly_txns) OVER (PARTITION BY state ORDER BY year), 2) AS txn_growth_pct
+                  FROM yearly_txn_growth),
+                  combined AS (
+                  SELECT u.state, u.year, u.reg_growth_pct, t.txn_growth_pct FROM user_growth_rate u
+                  JOIN txn_growth_rate t 
+                  ON u.state = t.state AND u.year = t.year
+                  WHERE u.prev_registered IS NOT NULL AND t.prev_txns IS NOT NULL)
+                  SELECT state, ROUND(AVG(reg_growth_pct), 2) AS avg_user_growth_pct, 
+                  ROUND(AVG(txn_growth_pct), 2) AS avg_txn_growth_pct
+                  FROM combined GROUP BY state HAVING AVG(reg_growth_pct) > 0 AND AVG(txn_growth_pct) > 0
+                  ORDER BY avg_txn_growth_pct DESC LIMIT 10;""")
     
-    df = pd.read_sql(q12, engine)
-    figs["fig12"] = px.bar(df, x="State", y="avg_txn",
-                           title="Consistent Transaction Growth States")
+    df_state_consistent_growth = pd.read_sql(q12, engine)
+    df_state_consistent_growth = df_state_consistent_growth.rename(columns = {"state":"State", 
+                                                                          "avg_user_growth_pct":"Average User Growth (%)",
+                                                                          "avg_txn_growth_pct":"Average Transaction Growth (%)"})
+
+    figs["fig12"] = px.bar(df_state_consistent_growth, x = "State", y = ["Average User Growth (%)", "Average Transaction Growth (%)"], 
+               barmode = "group", color_discrete_sequence = px.colors.qualitative.Plotly, 
+               labels = {"State": "State","variable": "Metric","value": "Growth (%)"},
+               title = "States Showing Consistent Growth in User Registration and Repeat Transaction")
 
     # ======================================================
     # QUERY 13 (STATE PIE CHARTS)
@@ -1222,6 +1268,7 @@ else:
             - These regions have higher concentration of working professionals, wealthier residents and a strong digital adoption culture fueling rapid insurance uptake through PhonePe.
             - It is also likely that PhonePe actively focused its marketing and outreach efforts in these postal codes, tapping into neighbourhoods known for early tech adoption and openness to digital financial products.
             - Postal codes such as 560103, which corresponds to the Belandur area in Bengaluru, are hubs for IT parks, tech campuses, and newly developed residential complexes, leading to a surge in new residents. As people relocate or find new jobs, insurance purchases, especially health, life or property - often spike as part of onboarding financial planning.""")    
+
 
 
 

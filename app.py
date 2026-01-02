@@ -1275,7 +1275,7 @@ else:
             # Problem 14 
 
             st.markdown("<h5>1. Top 3 Regions recording the highest total Insurance Transaction amount in 2024</h5>", unsafe_allow_html = True)
-            st.plotly_chart(fig14, use_container_width = True)
+            st.plotly_chart(figs["fig14"], use_container_width = True)
             
             st.markdown("<b>Observations</b>", unsafe_allow_html = True)
             st.markdown("""
@@ -1291,7 +1291,7 @@ else:
             # Problem 15 
 
             st.markdown("<h5>2. Year and Quarter combinations saw the highest total insurance transaction volume?</h5>", unsafe_allow_html = True)
-            st.plotly_chart(fig15, use_container_width = True)
+            st.plotly_chart(figs["fig15"], use_container_width = True)
             
             st.markdown("<b>Observations</b>", unsafe_allow_html = True)
             st.markdown("""
@@ -1333,6 +1333,7 @@ else:
             - These regions have higher concentration of working professionals, wealthier residents and a strong digital adoption culture fueling rapid insurance uptake through PhonePe.
             - It is also likely that PhonePe actively focused its marketing and outreach efforts in these postal codes, tapping into neighbourhoods known for early tech adoption and openness to digital financial products.
             - Postal codes such as 560103, which corresponds to the Belandur area in Bengaluru, are hubs for IT parks, tech campuses, and newly developed residential complexes, leading to a surge in new residents. As people relocate or find new jobs, insurance purchases, especially health, life or property - often spike as part of onboarding financial planning.""")    
+
 
 
 

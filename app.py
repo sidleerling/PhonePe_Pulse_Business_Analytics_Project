@@ -99,25 +99,37 @@ def load_business_figures():
     # QUERY 3
     # ======================================================
     q3 = text("""
-        SELECT
-    a.State,
-    a.Year,
-    ROUND((a.total_txn - b.total_txn) * 100.0 / NULLIF(b.total_txn, 0), 2) AS yoy_growth
-FROM
-    (SELECT State, Year, SUM(Transaction_count) AS total_txn
-     FROM agg_trans
-     WHERE Year BETWEEN 2020 AND 2024
-     GROUP BY State, Year) a
-JOIN
-    (SELECT State, Year + 1 AS Year, SUM(Transaction_count) AS total_txn
-     FROM agg_trans
-     GROUP BY State, Year) b
-ON a.State = b.State AND a.Year = b.Year
-ORDER BY a.State, a.Year;""")
+        WITH state_year_summary AS (
+                 SELECT State, Year, SUM(Transaction_count) AS TotalTransactions
+                 FROM agg_trans WHERE Year BETWEEN 2020 AND 2024 
+                 GROUP BY State, Year),
+                 growth AS (
+                 SELECT s.State, s.Year, s.TotalTransactions, 
+                 LAG(s.TotalTransactions) OVER (PARTITION BY s.State ORDER BY s.Year) AS PreviousYearTransactions
+                 FROM state_year_summary s),
+                 declining_states AS (
+                 SELECT State, ROUND((TotalTransactions - PreviousYearTransactions) * 100.0 / PreviousYearTransactions, 2)
+                 AS YoY_Transaction_Growth_Percent
+                 FROM growth
+                 WHERE PreviousYearTransactions IS NOT NULL
+                 AND Year = 2024
+                 ORDER BY YoY_Transaction_Growth_Percent ASC
+                 LIMIT 5)
+                 SELECT g.State, g.Year, ROUND((g.TotalTransactions - g.PreviousYearTransactions) * 100.0 / g.PreviousYearTransactions,2)
+                 AS "YoY Transaction Growth (%)"
+                 FROM growth g
+                 JOIN declining_states d ON g.State = d.State
+                 WHERE g.PreviousYearTransactions IS NOT NULL
+                 ORDER BY g.State, g.Year;""")
                 
-    df = pd.read_sql(q3, engine)
-    figs["fig3"] = px.line(df, x="Year", y="yoy_growth", color="State",
-                           title="Transaction Growth Decline Trends")
+    df_trans_growth_decline = pd.read_sql(q3, engine)
+    figs["fig3"] = px.line(df_trans_growth_decline, x = "Year", y = "YoY_Transaction_Growth (%)", color = "State", markers = True,
+                           color_discrete_sequence = px.colors.qualitative.Plotly,
+                           labels = {"State":"Regions", "YoY Transaction Growth (%)":"YoY Transaction Growth (%)"},
+                           title="Top 5 Regions Showing Most Decline in Transaction Growth From 2021-2024")
+    figs["fig3"].update_xaxes(tickmode = "array", tickvals = [2019, 2020, 2021, 2022, 2023, 2024], 
+                      ticktext = ["2019","2020","2021","2022","2023","2024"])
+    figs.["fig3"].update_traces(mode = "lines + markers", marker = dict(size = 6))
 
     # ======================================================
     # QUERY 4
@@ -1122,6 +1134,7 @@ else:
             - These regions have higher concentration of working professionals, wealthier residents and a strong digital adoption culture fueling rapid insurance uptake through PhonePe.
             - It is also likely that PhonePe actively focused its marketing and outreach efforts in these postal codes, tapping into neighbourhoods known for early tech adoption and openness to digital financial products.
             - Postal codes such as 560103, which corresponds to the Belandur area in Bengaluru, are hubs for IT parks, tech campuses, and newly developed residential complexes, leading to a surge in new residents. As people relocate or find new jobs, insurance purchases, especially health, life or property - often spike as part of onboarding financial planning.""")    
+
 
 
 

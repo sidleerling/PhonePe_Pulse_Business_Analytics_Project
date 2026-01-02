@@ -153,7 +153,7 @@ FROM agg_trans
 GROUP BY Transaction_type;""")
     
     df = pd.read_sql(q5, engine)
-    figs["fig5"] = px.pie(df, names="Transaction_type", values="share",
+    figs["fig5"] = px.pie(df, names="Transaction_type", values="share_pct",
                           title="Transaction Type Share")
 
     # ======================================================
@@ -170,8 +170,8 @@ LIMIT 6;""")
     
     df = pd.read_sql(q6, engine)
     fig6 = make_subplots(rows=1, cols=2, subplot_titles=("Top 3 Brands", "Bottom 3 Brands"))
-    fig6.add_bar(x=df.head(3)["Brand_name"], y=df.head(3)["users"], row=1, col=1)
-    fig6.add_bar(x=df.tail(3)["Brand_name"], y=df.tail(3)["users"], row=1, col=2)
+    fig6.add_bar(x=df.head(3)["Brand_name"], y=df.head(3)["total_users"], row=1, col=1)
+    fig6.add_bar(x=df.tail(3)["Brand_name"], y=df.tail(3)["total_users"], row=1, col=2)
     figs["fig6"] = fig6
 
     # ======================================================
@@ -189,8 +189,8 @@ LIMIT 6;
     
     df = pd.read_sql(q7, engine)
     fig7 = make_subplots(rows=1, cols=2, subplot_titles=("Top 3", "Bottom 3"))
-    fig7.add_bar(x=df.head(3)["State"], y=df.head(3)["engagement"], row=1, col=1)
-    fig7.add_bar(x=df.tail(3)["State"], y=df.tail(3)["engagement"], row=1, col=2)
+    fig7.add_bar(x=df.head(3)["State"], y=df.head(3)["engagement_rate"], row=1, col=1)
+    fig7.add_bar(x=df.tail(3)["State"], y=df.tail(3)["engagement_rate"], row=1, col=2)
     figs["fig7"] = fig7
 
     # ======================================================
@@ -206,7 +206,7 @@ GROUP BY Year, Quarter;
 """)
     
     df = pd.read_sql(q8, engine)
-    figs["fig8"] = px.bar(df, x="Year", y="engagement", color="Quarter",
+    figs["fig8"] = px.bar(df, x="Year", y="engagement_rate", color="Quarter",
                           title="Quarterly User Engagement")
 
     # ======================================================
@@ -223,7 +223,7 @@ GROUP BY Year;
     
     df = pd.read_sql(q9, engine)
     figs["fig9"] = px.bar(df, x="Year",
-                          y=["ins_txn", "ins_amt"],
+                          y=["insurance_txn", "insurance_value"],
                           barmode="group",
                           title="Insurance Growth Over Years")
 
@@ -241,7 +241,7 @@ LIMIT 5;
 """)
     
     df = pd.read_sql(q10, engine)
-    figs["fig10"] = px.bar(df, x="State", y="value",
+    figs["fig10"] = px.bar(df, x="State", y="insurance_spread",
                            title="Top Insurance Value States")
 
     # ======================================================
@@ -296,7 +296,7 @@ GROUP BY State, District_name;
     for state in df["State"].unique():
         sdf = df[df["State"] == state]
         state_pies[state] = px.pie(
-            sdf, names="District_name", values="opens",
+            sdf, names="District_name", values="app_opens",
             title=f"{state} App Open Share"
         )
     figs["state_pie_charts"] = state_pies
@@ -315,7 +315,7 @@ ORDER BY total_insurance DESC
 LIMIT 3;""")
     
     df = pd.read_sql(q14, engine)
-    figs["fig14"] = px.bar(df, x="State", y="total",
+    figs["fig14"] = px.bar(df, x="State", y="total_insurance",
                            title="Top Insurance States 2024")
 
     # ======================================================
@@ -330,7 +330,7 @@ FROM top_ins
 GROUP BY Year, Quarter;""")
     
     df = pd.read_sql(q15, engine)
-    figs["fig15"] = px.bar(df, x="Year", y="total", color="Quarter",
+    figs["fig15"] = px.bar(df, x="Year", y="total_volume", color="Quarter",
                            title="Highest Insurance Volume Quarters")
 
     # ======================================================
@@ -347,7 +347,7 @@ ORDER BY total_insurance DESC
 LIMIT 5;""")
     
     df = pd.read_sql(q16, engine)
-    figs["fig16"] = px.bar(df, x="District_name", y="total",
+    figs["fig16"] = px.bar(df, x="District_name", y="total_insurance",
                            title="Top Districts by Insurance Volume")
 
     # ======================================================
@@ -1120,6 +1120,7 @@ else:
             - These regions have higher concentration of working professionals, wealthier residents and a strong digital adoption culture fueling rapid insurance uptake through PhonePe.
             - It is also likely that PhonePe actively focused its marketing and outreach efforts in these postal codes, tapping into neighbourhoods known for early tech adoption and openness to digital financial products.
             - Postal codes such as 560103, which corresponds to the Belandur area in Bengaluru, are hubs for IT parks, tech campuses, and newly developed residential complexes, leading to a surge in new residents. As people relocate or find new jobs, insurance purchases, especially health, life or property - often spike as part of onboarding financial planning.""")    
+
 
 
 

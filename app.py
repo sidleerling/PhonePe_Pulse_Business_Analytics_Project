@@ -237,54 +237,97 @@ def load_business_figures():
     # QUERY 7
     # ======================================================
     q7 = text("""
-        SELECT
-    State,
-    ROUND(SUM(Number_of_app_opens) / NULLIF(SUM(Registered_users), 0), 2) AS engagement_rate
-FROM map_user
-GROUP BY State
-ORDER BY engagement_rate DESC
-LIMIT 6;
-""")
+       WITH app_engagement AS (
+                SELECT State AS "State", ROUND(AVG(Registered_users), 2) AS AvgRegUsers, ROUND(AVG(Number_of_app_opens), 2) AS AvgAppOpens
+                FROM map_user
+                GROUP BY State),
+                engagement_rate AS (
+                SELECT State, ROUND(AvgAppOpens / AvgRegUsers, 2) AS EngagementRate 
+                FROM app_engagement)
+                (SELECT * FROM engagement_rate
+                ORDER BY EngagementRate DESC
+                LIMIT 3)
+                UNION ALL
+                (SELECT * FROM engagement_rate ORDER BY EngagementRate ASC LIMIT 3)
+                ORDER BY EngagementRate DESC;""")
     
-    df = pd.read_sql(q7, engine)
-    fig7 = make_subplots(rows=1, cols=2, subplot_titles=("Top 3", "Bottom 3"))
-    fig7.add_bar(x=df.head(3)["State"], y=df.head(3)["engagement_rate"], row=1, col=1)
-    fig7.add_bar(x=df.tail(3)["State"], y=df.tail(3)["engagement_rate"], row=1, col=2)
-    figs["fig7"] = fig7
+    df_state_user_eng_rate = pd.read_sql(q7, engine)
+    df_state_user_eng_rate = df_state_user_eng_rate.rename(columns = {"EngagementRate":"Engagement Rate"})
+
+    top3_eng = df_state_user_eng_rate.iloc[0:3]
+    bottom3_eng = df_state_user_eng_rate.iloc[3:]
+    
+    palette = px.colors.qualitative.Plotly
+    
+    top3_colors = [palette[i % len(palette)] for i in range(len(top3_eng))]
+    bottom3_colors = [palette[i % len(palette)] for i in range(len(bottom3_eng))]
+    
+    figs["fig7"] = make_subplots(rows = 1, cols = 2, subplot_titles = ("Top 3 Regions",
+                                                               "Bottom 3 Regions"))
+    figs["fig7"].add_trace(go.Bar(x = top3_eng["State"], y = top3_eng["Engagement Rate"],
+                          marker_color = top3_colors), row = 1, col = 1)
+    figs["fig7"].add_trace(go.Bar(x = bottom3_eng["State"], y = bottom3_eng["Engagement Rate"],
+                         marker_color = bottom3_colors), row = 1, col = 2)
+    
+    figs["fig7"].update_layout(title_text = "PhonePe App Engagement Rates For Each Region", showlegend = False)
+
 
     # ======================================================
     # QUERY 8
     # ======================================================
     q8 = text("""
-        SELECT
-    Year,
-    Quarter,
-    ROUND(SUM(Number_of_app_opens) / NULLIF(SUM(Registered_users), 0), 4) AS engagement_rate
-FROM map_user
-GROUP BY Year, Quarter;
-""")
+        WITH quarterly_engagement AS (
+                 SELECT Year, Quarter, ROUND(SUM(Number_of_app_opens)/SUM(Registered_users), 4) AS EngagementRate
+                 FROM map_user
+                 GROUP BY Year, Quarter),
+                 ranked AS (
+                 SELECT Year, Quarter, EngagementRate,
+                 RANK() OVER (PARTITION BY Year ORDER BY EngagementRate DESC) AS rank_highest,
+                 RANK() OVER (PARTITION BY Year ORDER BY EngagementRate ASC) AS rank_lowest
+                 FROM quarterly_engagement)
+                 SELECT Year, Quarter, EngagementRate as 'Engagement Rate' FROM ranked
+                 WHERE rank_highest = 1 OR rank_lowest = 1
+                 ORDER BY Year, Quarter, EngagementRate ASC;""")
     
-    df = pd.read_sql(q8, engine)
-    figs["fig8"] = px.bar(df, x="Year", y="engagement_rate", color="Quarter",
-                          title="Quarterly User Engagement")
+    df_quarter_user_eng_rate = pd.read_sql(q8, engine)
+    df_quarter_user_eng_rate = df_quarter_user_eng_rate[df_quarter_user_eng_rate["Year"]!=2018]
+    df_quarter_user_eng_rate["Quarter"] = df_quarter_user_eng_rate["Quarter"].astype(str)
+    df_quarter_user_eng_rate = df_quarter_user_eng_rate.sort_values(["Year","Engagement Rate"], ascending = [True, True])
+    figs["fig8"] = px.bar(df_quarter_user_eng_rate, x = "Year", y = "Engagement Rate",
+                          barmode = "group", labels = {"Year":"Year", "Quarter":"Quarter", "Engagement Rate":"Engagement Rate"}, 
+                          color = "Quarter",
+                          color_discrete_sequence = px.colors.qualitative.Plotly,
+                          title = "Highest and Lowest PhonePe App User Engagement Rate Per Year")
 
     # ======================================================
     # QUERY 9
     # ======================================================
     q9 = text("""
-        SELECT
-    Year,
-    SUM(Insurance_count) AS insurance_txn,
-    SUM(Insurance_amount) AS insurance_value
-FROM agg_ins
-GROUP BY Year;
-""")
+        WITH yearly_insurance AS (
+                 SELECT Year, SUM(Insurance_count) AS TotalInsurance, SUM(Insurance_amount) AS TotalValue
+                 FROM agg_ins
+                 WHERE Year BETWEEN 2020 AND 2024
+                 GROUP BY Year),
+                 growth AS (
+                 SELECT Year, TotalInsurance, TotalValue, LAG(TotalInsurance) OVER (ORDER BY Year) AS PrevTransactions,
+                 LAG(TotalValue) OVER (ORDER BY Year) AS PrevValue
+                 FROM yearly_insurance)
+                 SELECT Year, TotalInsurance as "No of Insurance Transactions", TotalValue "Total Insurance Amount",
+                 ROUND((TotalInsurance - PrevTransactions) * 100.0 / PrevTransactions, 2) AS "Insurance Transaction Growth (%)",
+                 ROUND((TotalValue - PrevValue) * 100.0 / PrevValue, 2) AS "Insurance Amount Growth (%)"
+                 FROM growth
+                 WHERE PrevTransactions IS NOT NULL AND PrevValue IS NOT NULL
+                 ORDER BY Year;""")
     
-    df = pd.read_sql(q9, engine)
-    figs["fig9"] = px.bar(df, x="Year",
-                          y=["insurance_txn", "insurance_value"],
-                          barmode="group",
-                          title="Insurance Growth Over Years")
+    df_ins_growth_each_year = pd.read_sql(q9, engine)
+    figs["fig9"] = px.bar(df_ins_growth_each_year, x = "Year", y = ["Insurance Transaction Growth (%)", "Insurance Amount Growth (%)"],
+                          barmode = "group",
+                          color_discrete_sequence = px.colors.qualitative.Plotly,
+                          labels = {"Year":"Year","Insurance Transaction Growth (%)":"Insurance Transaction Growth (%)",
+                                    "Insurance Amount Growth (%)":"Insurance Amount Growth (%)","variable":"Metric", 
+                                    "value":"Growth (%)"},
+                          title = "Growth in Number Of Transactions and Total Insurance Transactions Over The Years")
+
 
     # ======================================================
     # QUERY 10
@@ -1179,6 +1222,7 @@ else:
             - These regions have higher concentration of working professionals, wealthier residents and a strong digital adoption culture fueling rapid insurance uptake through PhonePe.
             - It is also likely that PhonePe actively focused its marketing and outreach efforts in these postal codes, tapping into neighbourhoods known for early tech adoption and openness to digital financial products.
             - Postal codes such as 560103, which corresponds to the Belandur area in Bengaluru, are hubs for IT parks, tech campuses, and newly developed residential complexes, leading to a surge in new residents. As people relocate or find new jobs, insurance purchases, especially health, life or property - often spike as part of onboarding financial planning.""")    
+
 
 
 

@@ -196,19 +196,42 @@ def load_business_figures():
     # QUERY 6
     # ======================================================
     q6 = text("""
-        SELECT
-    Brand_name,
-    SUM(User_count) AS total_users
-FROM agg_user
-GROUP BY Brand_name
-ORDER BY total_users DESC
-LIMIT 6;""")
+        WITH brand_users AS (
+                 SELECT Brand_name AS Brandname, SUM(User_count) AS Totalusers 
+                 FROM agg_user
+                 GROUP BY Brand_name),
+                 ranked AS (
+                 SELECT Brandname, Totalusers,
+                 RANK() OVER (ORDER BY Totalusers DESC) AS rank_highest,
+                 RANK() OVER (ORDER BY Totalusers ASC) AS rank_lowest
+                 FROM brand_users)
+                 SELECT Brandname, Totalusers 
+                 FROM ranked 
+                 WHERE rank_highest <= 3 OR rank_lowest <= 3
+                 ORDER BY Totalusers DESC;""")
     
-    df = pd.read_sql(q6, engine)
-    fig6 = make_subplots(rows=1, cols=2, subplot_titles=("Top 3 Brands", "Bottom 3 Brands"))
-    fig6.add_bar(x=df.head(3)["Brand_name"], y=df.head(3)["total_users"], row=1, col=1)
-    fig6.add_bar(x=df.tail(3)["Brand_name"], y=df.tail(3)["total_users"], row=1, col=2)
-    figs["fig6"] = fig6
+    df_device_brand_users = pd.read_sql(q6, engine)
+    df_device_brand_users = df_device_brand_users.rename(columns = {"Brandname":"Brand Name", 
+                                                                "Totalusers":"Total Users"})
+    import plotly.graph_objects as go
+    from plotly.subplots import make_subplots
+    
+    top3_df = df_device_brand_users.iloc[0:3]
+    bottom3_df = df_device_brand_users.iloc[3:]
+    
+    palette = px.colors.qualitative.Plotly
+    
+    top3_colors = [palette[i % len(palette)] for i in range(len(top3_df))]
+    bottom3_colors = [palette[i % len(palette)] for i in range(len(bottom3_df))]
+    
+    figs["fig6"] = make_subplots(rows = 1, cols = 2, subplot_titles = ("Top 3 Mobile Brands",
+                                                               "Bottom 3 Mobile Brands"))
+    figs["fig6"].add_trace(go.Bar(x = top3_df["Brand Name"], y = top3_df["Total Users"],
+                          marker_color = top3_colors), row = 1, col = 1)
+    figs["fig6"].add_trace(go.Bar(x = bottom3_df["Brand Name"], y = bottom3_df["Total Users"],
+                         marker_color = bottom3_colors), row = 1, col = 2)
+    
+    figs["fig6"].update_layout(title_text = "Total Number of PhonePe Users For Each Device Brand", showlegend = False)
 
     # ======================================================
     # QUERY 7
@@ -1156,6 +1179,7 @@ else:
             - These regions have higher concentration of working professionals, wealthier residents and a strong digital adoption culture fueling rapid insurance uptake through PhonePe.
             - It is also likely that PhonePe actively focused its marketing and outreach efforts in these postal codes, tapping into neighbourhoods known for early tech adoption and openness to digital financial products.
             - Postal codes such as 560103, which corresponds to the Belandur area in Bengaluru, are hubs for IT parks, tech campuses, and newly developed residential complexes, leading to a surge in new residents. As people relocate or find new jobs, insurance purchases, especially health, life or property - often spike as part of onboarding financial planning.""")    
+
 
 
 

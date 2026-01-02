@@ -160,8 +160,13 @@ GROUP BY Transaction_type;""")
     # QUERY 6
     # ======================================================
     q6 = text("""
-        SELECT Brand_name, SUM(User_count) users FROM agg_user GROUP BY Brand_name
-        ORDER BY users DESC LIMIT 6;""")
+        SELECT
+    Brand_name,
+    SUM(User_count) AS total_users
+FROM agg_user
+GROUP BY Brand_name
+ORDER BY total_users DESC
+LIMIT 6;""")
     
     df = pd.read_sql(q6, engine)
     fig6 = make_subplots(rows=1, cols=2, subplot_titles=("Top 3 Brands", "Bottom 3 Brands"))
@@ -173,8 +178,14 @@ GROUP BY Transaction_type;""")
     # QUERY 7
     # ======================================================
     q7 = text("""
-        SELECT State, ROUND(AVG(Number_of_app_opens) / AVG(Registered_users),2) AS engagement
-        FROM map_user GROUP BY State ORDER BY engagement DESC LIMIT 6;""")
+        SELECT
+    State,
+    ROUND(SUM(Number_of_app_opens) / NULLIF(SUM(Registered_users), 0), 2) AS engagement_rate
+FROM map_user
+GROUP BY State
+ORDER BY engagement_rate DESC
+LIMIT 6;
+""")
     
     df = pd.read_sql(q7, engine)
     fig7 = make_subplots(rows=1, cols=2, subplot_titles=("Top 3", "Bottom 3"))
@@ -186,8 +197,13 @@ GROUP BY Transaction_type;""")
     # QUERY 8
     # ======================================================
     q8 = text("""
-        SELECT Year, Quarter, ROUND(SUM(Number_of_app_opens)/SUM(Registered_users),4) AS engagement
-        FROM map_user GROUP BY Year, Quarter;""")
+        SELECT
+    Year,
+    Quarter,
+    ROUND(SUM(Number_of_app_opens) / NULLIF(SUM(Registered_users), 0), 4) AS engagement_rate
+FROM map_user
+GROUP BY Year, Quarter;
+""")
     
     df = pd.read_sql(q8, engine)
     figs["fig8"] = px.bar(df, x="Year", y="engagement", color="Quarter",
@@ -197,8 +213,13 @@ GROUP BY Transaction_type;""")
     # QUERY 9
     # ======================================================
     q9 = text("""
-        SELECT Year, SUM(Insurance_count) AS ins_txn, SUM(Insurance_amount) AS ins_amt
-        FROM agg_ins GROUP BY Year;""")
+        SELECT
+    Year,
+    SUM(Insurance_count) AS insurance_txn,
+    SUM(Insurance_amount) AS insurance_value
+FROM agg_ins
+GROUP BY Year;
+""")
     
     df = pd.read_sql(q9, engine)
     figs["fig9"] = px.bar(df, x="Year",
@@ -210,8 +231,14 @@ GROUP BY Transaction_type;""")
     # QUERY 10
     # ======================================================
     q10 = text("""
-        SELECT State, MAX(Insurance_amount) - MIN(Insurance_amount) AS value
-        FROM agg_ins GROUP BY State ORDER BY value DESC LIMIT 5;""")
+        SELECT
+    State,
+    MAX(Insurance_amount) - MIN(Insurance_amount) AS insurance_spread
+FROM agg_ins
+GROUP BY State
+ORDER BY insurance_spread DESC
+LIMIT 5;
+""")
     
     df = pd.read_sql(q10, engine)
     figs["fig10"] = px.bar(df, x="State", y="value",
@@ -221,9 +248,15 @@ GROUP BY Transaction_type;""")
     # QUERY 11
     # ======================================================
     q11 = text("""
-        SELECT t.State,
-        ROUND(SUM(i.Insurance_count) * 100 / SUM(t.Transaction_count),4) AS penetration
-        FROM agg_trans t JOIN agg_ins i ON t.State = i.State GROUP BY t.State ORDER BY penetration ASC LIMIT 5;""")
+        SELECT
+    t.State,
+    ROUND(SUM(i.Insurance_count) * 100.0 / NULLIF(SUM(t.Transaction_count), 0), 2) AS penetration
+FROM agg_trans t
+JOIN agg_ins i ON t.State = i.State
+GROUP BY t.State
+ORDER BY penetration ASC
+LIMIT 5;
+""")
     
     df = pd.read_sql(q11, engine)
     figs["fig11"] = px.bar(df, x="State", y="penetration",
@@ -233,8 +266,14 @@ GROUP BY Transaction_type;""")
     # QUERY 12
     # ======================================================
     q12 = text("""
-        SELECT State, ROUND(AVG(Transaction_count),2) AS avg_txn FROM agg_trans
-        GROUP BY State ORDER BY avg_txn DESC LIMIT 10;""")
+        SELECT
+    State,
+    AVG(Transaction_count) AS avg_txn
+FROM agg_trans
+GROUP BY State
+ORDER BY avg_txn DESC
+LIMIT 10;
+""")
     
     df = pd.read_sql(q12, engine)
     figs["fig12"] = px.bar(df, x="State", y="avg_txn",
@@ -244,7 +283,13 @@ GROUP BY Transaction_type;""")
     # QUERY 13 (STATE PIE CHARTS)
     # ======================================================
     q13 = text("""
-        SELECT State, District_name, SUM(Number_of_app_opens) AS opens FROM map_user GROUP BY State, District_name;""")
+        SELECT
+    State,
+    District_name,
+    SUM(Number_of_app_opens) AS app_opens
+FROM map_user
+GROUP BY State, District_name;
+""")
     
     df = pd.read_sql(q13, engine)
     state_pies = {}
@@ -260,13 +305,15 @@ GROUP BY Transaction_type;""")
     # QUERY 14
     # ======================================================
     q14 = text("""
-        SELECT State, SUM(insurance_amount) total
-        FROM top_ins
-        WHERE Year = 2024
-        GROUP BY State
-        ORDER BY total DESC
-        LIMIT 3;
-    """)
+        SELECT
+    State,
+    SUM(Insurance_amount) AS total_insurance
+FROM top_ins
+WHERE Year = 2024
+GROUP BY State
+ORDER BY total_insurance DESC
+LIMIT 3;""")
+    
     df = pd.read_sql(q14, engine)
     figs["fig14"] = px.bar(df, x="State", y="total",
                            title="Top Insurance States 2024")
@@ -275,10 +322,13 @@ GROUP BY Transaction_type;""")
     # QUERY 15
     # ======================================================
     q15 = text("""
-        SELECT Year, Quarter, SUM(insurance_amount) total
-        FROM top_ins
-        GROUP BY Year, Quarter;
-    """)
+        SELECT
+    Year,
+    Quarter,
+    SUM(Insurance_amount) AS total_volume
+FROM top_ins
+GROUP BY Year, Quarter;""")
+    
     df = pd.read_sql(q15, engine)
     figs["fig15"] = px.bar(df, x="Year", y="total", color="Quarter",
                            title="Highest Insurance Volume Quarters")
@@ -287,13 +337,15 @@ GROUP BY Transaction_type;""")
     # QUERY 16
     # ======================================================
     q16 = text("""
-        SELECT District_name, SUM(insurance_amount) total
-        FROM map_ins
-        WHERE Year = 2024
-        GROUP BY District_name
-        ORDER BY total DESC
-        LIMIT 5;
-    """)
+        SELECT
+    District_name,
+    SUM(Insurance_amount) AS total_insurance
+FROM map_ins
+WHERE Year = 2024
+GROUP BY District_name
+ORDER BY total_insurance DESC
+LIMIT 5;""")
+    
     df = pd.read_sql(q16, engine)
     figs["fig16"] = px.bar(df, x="District_name", y="total",
                            title="Top Districts by Insurance Volume")
@@ -302,13 +354,16 @@ GROUP BY Transaction_type;""")
     # QUERY 17
     # ======================================================
     q17 = text("""
-        SELECT Pincode, SUM(insurance_count) growth
-        FROM top_ins
-        WHERE Year = 2024
-        GROUP BY Pincode
-        ORDER BY growth DESC
-        LIMIT 5;
+        SELECT
+    Pincode,
+    SUM(Insurance_count) AS growth
+FROM top_ins
+WHERE Year = 2024
+GROUP BY Pincode
+ORDER BY growth DESC
+LIMIT 5;
     """)
+    
     df = pd.read_sql(q17, engine)
     figs["fig17"] = px.bar(df, x="Pincode", y="growth",
                            title="Top Pincodes Insurance Growth")
@@ -1065,6 +1120,7 @@ else:
             - These regions have higher concentration of working professionals, wealthier residents and a strong digital adoption culture fueling rapid insurance uptake through PhonePe.
             - It is also likely that PhonePe actively focused its marketing and outreach efforts in these postal codes, tapping into neighbourhoods known for early tech adoption and openness to digital financial products.
             - Postal codes such as 560103, which corresponds to the Belandur area in Bengaluru, are hubs for IT parks, tech campuses, and newly developed residential complexes, leading to a surge in new residents. As people relocate or find new jobs, insurance purchases, especially health, life or property - often spike as part of onboarding financial planning.""")    
+
 
 
 

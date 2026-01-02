@@ -135,40 +135,62 @@ def load_business_figures():
     # QUERY 4
     # ======================================================
     q4 = text("""
-       SELECT
-    a.Year,
-    a.Quarter,
-    ROUND((a.total_txn - b.total_txn) * 100.0 / NULLIF(b.total_txn, 0), 2) AS spike_pct
-FROM
-    (SELECT Year, Quarter, SUM(Transaction_count) AS total_txn
-     FROM agg_trans
-     GROUP BY Year, Quarter) a
-JOIN
-    (SELECT Year, Quarter + 1 AS Quarter, SUM(Transaction_count) AS total_txn
-     FROM agg_trans
-     GROUP BY Year, Quarter) b
-ON a.Year = b.Year AND a.Quarter = b.Quarter
-WHERE b.total_txn IS NOT NULL;""")
-
+       WITH quarterly AS (
+              SELECT Year, Quarter, SUM(Transaction_count) AS TotalTransactions
+              FROM agg_trans
+              WHERE Year BETWEEN 2018 AND 2024
+              GROUP BY Year, Quarter),
+              with_prev AS (
+              SELECT Year, Quarter, TotalTransactions, LAG(TotalTransactions) OVER (ORDER BY Year, Quarter) AS PrevTotalTransactions,
+              CASE
+               WHEN LAG(TotalTransactions) OVER (ORDER BY Year, Quarter) IS NULL THEN NULL
+               WHEN LAG(TotalTransactions) OVER (ORDER BY Year, Quarter) = 0 THEN NULL
+               ELSE (TotalTransactions - LAG(TotalTransactions) OVER (ORDER BY Year, Quarter)) * 100.0 / LAG(TotalTransactions) OVER (ORDER BY Year, Quarter)
+              END AS TransactionSpikePct
+              FROM quarterly)
+              SELECT Year, Quarter AS 'Quarter With Max Pct Spike', TotalTransactions as 'Total Transactions', 
+              PrevTotalTransactions as 'Prev Total Transactions', ROUND(TransactionSpikePct,2) AS 'Spike Pct'
+              FROM (SELECT *,
+              ROW_NUMBER() OVER (PARTITION BY Year ORDER BY CASE WHEN TransactionSpikePct IS NULL THEN 1 ELSE 0 END, TransactionSpikePct DESC) 
+              AS rn
+              FROM with_prev) t
+              WHERE rn = 1
+              ORDER BY Year;""")
     
-    df = pd.read_sql(q4, engine)
-    figs["fig4"] = px.bar(df, x="Year", y="spike_pct", color="Quarter",
-                          title="Quarterly Transaction Spike")
+    df_quarter_spike = pd.read_sql(q4, engine)
+    df_quarter_spike["Quarter With Max Pct Spike"] = df_quarter_spike["Quarter With Max Pct Spike"].astype(str)
+    
+    fig4 = px.bar(df_quarter_spike, x = "Year", y = "Spike Pct", color = "Quarter With Max Pct Spike",
+                  labels = {"Year":"Year","Spike Pct":"Transaction Spike (%)","Quarter With Max Pct Spike":"Quarter"},
+                  color_discrete_sequence = px.colors.qualitative.Plotly,
+                  title = "Quarters with Highest Transaction Spike in Each Year")
 
     # ======================================================
     # QUERY 5
     # ======================================================
     q5 = text("""
-        SELECT
-    Transaction_type,
-    ROUND(SUM(Transaction_amount) * 100.0 /
-          (SELECT SUM(Transaction_amount) FROM agg_trans), 2) AS share_pct
-FROM agg_trans
-GROUP BY Transaction_type;""")
+        WITH yearly_totals AS (
+                 SELECT Year, SUM(Transaction_amount) AS TotalTransactionAmount
+                 FROM agg_trans
+                 GROUP BY Year),
+                 type_share AS (
+                 SELECT a.Year, a.Transaction_type AS TransactionType, SUM(a.Transaction_amount) AS TransactionAmount,
+                 SUM(a.Transaction_amount) * 100.0 / y.TotalTransactionAmount AS SharePct
+                 FROM agg_trans a
+                 JOIN yearly_totals y ON a.Year = y.Year
+                 GROUP BY a.Year, a.Transaction_type, y.TotalTransactionAmount)
+                 SELECT TransactionType AS "Transaction Type", ROUND(AVG(SharePct), 2) AS "Average Share Pct"
+                 FROM type_share
+                 GROUP BY TransactionType;""")
     
-    df = pd.read_sql(q5, engine)
-    figs["fig5"] = px.pie(df, names="Transaction_type", values="share_pct",
-                          title="Transaction Type Share")
+    df_trans_type_high_share = pd.read_sql(q5, engine)
+    figs["fig5"] = px.pie(df_trans_type_high_share, names = "Transaction Type", values = "Average Share Pct", 
+                          color = "Transaction Type",
+                          color_discrete_sequence = px.colors.qualitative.Plotly,
+                          title = "Percentage Share of All Transactions By Each Payment Type")
+
+    figs["fig5"].update_traces(textposition = "outside", pull = 0.1)
+    figs["fig5"].update_layout(width = 600, height = 500, uniformtext_minsize = 14, uniformtext_mode = "show")
 
     # ======================================================
     # QUERY 6
@@ -1134,6 +1156,7 @@ else:
             - These regions have higher concentration of working professionals, wealthier residents and a strong digital adoption culture fueling rapid insurance uptake through PhonePe.
             - It is also likely that PhonePe actively focused its marketing and outreach efforts in these postal codes, tapping into neighbourhoods known for early tech adoption and openness to digital financial products.
             - Postal codes such as 560103, which corresponds to the Belandur area in Bengaluru, are hubs for IT parks, tech campuses, and newly developed residential complexes, leading to a surge in new residents. As people relocate or find new jobs, insurance purchases, especially health, life or property - often spike as part of onboarding financial planning.""")    
+
 
 
 

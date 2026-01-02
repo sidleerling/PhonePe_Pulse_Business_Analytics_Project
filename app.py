@@ -57,11 +57,11 @@ def load_business_figures():
     df_trans_value_growth_fil = df_trans_value_growth[df_trans_value_growth["Year"] != 2018]
 
     figs["fig1"] = px.bar(
-        df_trans_value_growth_fil,
-        x="Year",
-        y=["Transaction Number Growth (%)", "Transaction Amount Growth (%)"],
-        barmode="group",
-        title="Growth in Transaction Volume Over Years", color_discrete_sequence = ["#636EFA","#EF553B"])
+                        df_trans_value_growth_fil,
+                        x="Year",
+                        y=["Transaction Number Growth (%)", "Transaction Amount Growth (%)"],
+                        barmode="group",
+                        title="Growth in Transaction Volume Over Years", color_discrete_sequence = ["#636EFA","#EF553B"])
 
     # ======================================================
     # QUERY 2
@@ -463,7 +463,6 @@ def load_business_figures():
                   ORDER BY State, district_rank;""")
     
     df_district_metrics = pd.read_sql(q13, engine)
-    import plotly.express as px
 
     state_pie_charts = {}
     states = df_district_metrics['State'].unique()
@@ -550,8 +549,6 @@ def load_business_figures():
     # ======================================================
     # QUERY 17
     # ======================================================
-    import plotly.express as px
-    
     q17 = text("""
         WITH yearly_pin_data AS (
                   SELECT pincode, year, SUM(insurance_count) AS yearly_transaction_count
@@ -584,7 +581,6 @@ def load_business_figures():
                     title = "Top 5 Pincodes With Highest Growth in Insurance Transactions in 2024")
     
     figs["fig17"].update_layout(xaxis_type = "category", bargap = 0.2)
-    
     return figs
 
 figs = load_business_figures()
@@ -1337,6 +1333,7 @@ else:
             - These regions have higher concentration of working professionals, wealthier residents and a strong digital adoption culture fueling rapid insurance uptake through PhonePe.
             - It is also likely that PhonePe actively focused its marketing and outreach efforts in these postal codes, tapping into neighbourhoods known for early tech adoption and openness to digital financial products.
             - Postal codes such as 560103, which corresponds to the Belandur area in Bengaluru, are hubs for IT parks, tech campuses, and newly developed residential complexes, leading to a surge in new residents. As people relocate or find new jobs, insurance purchases, especially health, life or property - often spike as part of onboarding financial planning.""")    
+
 
 
 

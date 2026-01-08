@@ -1251,8 +1251,8 @@ else:
             # Problem 13
             
             st.markdown("<h5>2. Percentage Distribution Of App Opens Across Districts Within Top 3 States</h5>", unsafe_allow_html = True)
-            for state, figs["fig13"] in state_pie_charts.items():
-                st.plotly_chart(figs["fig13"], use_container_width = True)
+            for state, fig in state_pie_charts.items():
+                st.plotly_chart(fig, use_container_width = True)
 
             st.markdown("<b>Observations</b>", unsafe_allow_html = True)
             st.markdown("""
@@ -1333,6 +1333,7 @@ else:
             - These regions have higher concentration of working professionals, wealthier residents and a strong digital adoption culture fueling rapid insurance uptake through PhonePe.
             - It is also likely that PhonePe actively focused its marketing and outreach efforts in these postal codes, tapping into neighbourhoods known for early tech adoption and openness to digital financial products.
             - Postal codes such as 560103, which corresponds to the Belandur area in Bengaluru, are hubs for IT parks, tech campuses, and newly developed residential complexes, leading to a surge in new residents. As people relocate or find new jobs, insurance purchases, especially health, life or property - often spike as part of onboarding financial planning.""")    
+
 
 
 

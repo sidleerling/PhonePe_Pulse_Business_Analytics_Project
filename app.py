@@ -1265,7 +1265,13 @@ else:
             st.markdown("""
             - The top districts in each state such as Pune, Nashik, Gautam Buddha Nagar, Lucknow, Ghaziabad, Bengaluru are major urban centers with significant economic activities, higher disposable incomes, and a tech-savvy population especially Bengaluru and Pune. This thereby drives frequent app usage. These cities are hubs for digital payments due to high merchant densities and more retail/business transactions compared to other districts.
             - These states themselves have large populations but the districts that have displayed the highest share in app opens have dense populations with higher smartphone penetration and internet connectivity thereby leading to greater app engagement.""")
-
+            st.markdown("<b>Business Recommendations</b>", unsafe_allow_html = True)
+            st.markdown("""
+            - Target Indian festivals in the top districts by creating a “Merchant Onboarding Blitz” where 10000+ new QR codes per district are installed as UPI peaks by 37% after 6 PM.
+            - Offer urban premium packages with higher transaction limits + exclusive rewards for these top districts.
+            - Create strategic partnerships with tech ecosystems such as IT parks, co-working spaces in Bengaluru/Pune for exclusive PhonePe integrations.
+            - PhonePe can also create district leaderboards within their apps to gamify engagement.""")
+            
         if selected_cs == "Insurance Transactions Analysis":
             st.subheader("Insurance Transactions Analysis")
             st.markdown("<h4>Problem Statement</h4>", unsafe_allow_html = True)
@@ -1332,6 +1338,7 @@ else:
             - These regions have higher concentration of working professionals, wealthier residents and a strong digital adoption culture fueling rapid insurance uptake through PhonePe.
             - It is also likely that PhonePe actively focused its marketing and outreach efforts in these postal codes, tapping into neighbourhoods known for early tech adoption and openness to digital financial products.
             - Postal codes such as 560103, which corresponds to the Belandur area in Bengaluru, are hubs for IT parks, tech campuses, and newly developed residential complexes, leading to a surge in new residents. As people relocate or find new jobs, insurance purchases, especially health, life or property - often spike as part of onboarding financial planning.""")    
+
 
 
 
